@@ -7,11 +7,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func New(config ...Config) fiber.Handler {
+func NewCoraza(config ...Config) fiber.Handler {
 	cfg := configDefault(config...)
 
 	return func(c *fiber.Ctx) error {
-		if cfg.Next != nil {
+		if cfg.Next != nil && cfg.Next(c) {
 			return c.Next()
 		}
 
@@ -37,11 +37,12 @@ func New(config ...Config) fiber.Handler {
 
 		if it := tx.ProcessRequestHeaders(); it != nil {
 			if !cfg.Block {
-				cfg.Consumer.Write([]byte(fmt.Sprintf("[trafficMatch][%s] Detected with skipped action: %s",
+				cfg.Consumer.Write([]byte(fmt.Sprintf("[trafficMatch][%d] Detected with skipped action: %s",
 					it.RuleID, it.Action)))
+				return c.Next()
 			}
 
-			cfg.Consumer.Write([]byte(fmt.Sprintf("[trafficMatch][%s] Coraza Responded with: %s",
+			cfg.Consumer.Write([]byte(fmt.Sprintf("[trafficMatch][%d] Coraza Responded with: %s",
 				it.RuleID, it.Action)))
 			return handleIntervention(c, it)
 		}
@@ -65,7 +66,8 @@ func New(config ...Config) fiber.Handler {
 func handleIntervention(c *fiber.Ctx, it *types.Interruption) error {
 	switch it.Action {
 	case "drop":
-		c.Context().Conn().Close()
+		c.Status(it.Status)
+		return c.Context().Conn().Close()
 	case "deny":
 		return c.Status(it.Status).SendString("")
 	case "redirect":

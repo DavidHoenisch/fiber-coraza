@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	Next func(c fiber.Ctx) bool
+	Next func(c *fiber.Ctx) bool
 
 	// block matched requests or just log them
 	Block bool
