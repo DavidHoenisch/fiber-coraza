@@ -140,7 +140,8 @@ app.Use(coraza.NewCoraza(coraza.Config{
 
 ### 2\. The "Slack" Consumer (Advanced)
 
-Since `Write` receives a byte slice of JSON, you can unmarshal it and send alerts to external systems like Slack, Discord, or Datadog.
+Since `Write` receives a byte slice of JSON, you can unmarshal it and send
+alerts to external systems like Slack, Discord, or Datadog.
 
 ```go
 type SlackAlerter struct {
