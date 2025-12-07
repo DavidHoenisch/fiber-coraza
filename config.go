@@ -2,6 +2,7 @@ package coraza
 
 import (
 	"io"
+	"log"
 	"strings"
 
 	"github.com/corazawaf/coraza/v3"
@@ -69,11 +70,12 @@ func configDefault(config ...Config) Config {
 	if cfg.WAF == nil {
 		directivesAsString, err := parseDirectives(cfg.Directives)
 		if err != nil {
-			return cfg
+			log.Fatal(err)
 		}
 
 		waf, err := createWAF(directivesAsString, cfg.Callback)
 		if err != nil {
+			log.Printf("Failed to initialize WAF with %v", err)
 			return cfg
 		}
 		cfg.WAF = waf

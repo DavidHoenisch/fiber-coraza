@@ -23,6 +23,10 @@ func NewCoraza(config ...Config) fiber.Handler {
 		defer func() {
 			tx.ProcessLogging()
 
+			if cfg.Consumer != nil {
+				writeAuditLog(c, tx, cfg.Consumer)
+			}
+
 			if err := tx.Close(); err != nil {
 				// something
 			}
@@ -37,13 +41,13 @@ func NewCoraza(config ...Config) fiber.Handler {
 
 		if it := tx.ProcessRequestHeaders(); it != nil {
 			if !cfg.Block {
-				cfg.Consumer.Write([]byte(fmt.Sprintf("[trafficMatch][%d] Detected with skipped action: %s",
-					it.RuleID, it.Action)))
+				cfg.Consumer.Write(fmt.Appendf(nil, "[trafficMatch][%d] Detected with skipped action: %s",
+					it.RuleID, it.Action))
 				return c.Next()
 			}
 
-			cfg.Consumer.Write([]byte(fmt.Sprintf("[trafficMatch][%d] Coraza Responded with: %s",
-				it.RuleID, it.Action)))
+			cfg.Consumer.Write(fmt.Appendf(nil, "[trafficMatch][%d] Coraza Responded with: %s",
+				it.RuleID, it.Action))
 			return handleIntervention(c, it)
 		}
 

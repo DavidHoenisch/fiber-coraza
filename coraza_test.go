@@ -2,6 +2,7 @@ package coraza
 
 import (
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -104,4 +105,54 @@ func TestMiddleware_Next_Skip(t *testing.T) {
 	reqBlock := httptest.NewRequest("GET", "/block", nil)
 	respBlock, _ := app.Test(reqBlock)
 	utils.AssertEqual(t, 403, respBlock.StatusCode)
+}
+
+func TestMiddleware_Load_Bulk_Rules(t *testing.T) {
+	app := fiber.New()
+
+	reader, err := os.Open("./crs-samples.conf")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer reader.Close()
+
+	app.Use(NewCoraza(Config{
+		Directives: reader,
+		Block:      true,
+	}))
+
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendString("Should not be reached")
+	})
+
+	req := httptest.NewRequest("GET", "/?id=attack", nil)
+	resp, err := app.Test(req)
+	utils.AssertEqual(t, nil, err)
+	utils.AssertEqual(t, 403, resp.StatusCode)
+}
+
+func TestMiddleware_Custom_Consumer(t *testing.T) {
+	app := fiber.New()
+
+	reader, err := os.Open("./crs-samples.conf")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer reader.Close()
+
+	app.Use(NewCoraza(Config{
+		Directives: reader,
+		Block:      true,
+	}))
+
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendString("Should not be reached")
+	})
+
+	req := httptest.NewRequest("GET", "/?id=attack", nil)
+	resp, err := app.Test(req)
+	utils.AssertEqual(t, nil, err)
+	utils.AssertEqual(t, 403, resp.StatusCode)
 }
