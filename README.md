@@ -1,5 +1,8 @@
 # Fiber-Coraza
 
+
+⚠️Working in progress and not production ready ⚠️
+
 A high-performance, design-first [Coraza WAF](https://coraza.io) middleware for
 [Go Fiber](https://gofiber.io).
 
