@@ -156,3 +156,59 @@ func TestMiddleware_Custom_Consumer(t *testing.T) {
 	utils.AssertEqual(t, nil, err)
 	utils.AssertEqual(t, 403, resp.StatusCode)
 }
+
+func TestMiddleware_BodyInspection_Block(t *testing.T) {
+	app := fiber.New()
+
+	// Rule that checks the request body
+	rules := `
+		SecRuleEngine On
+		SecRequestBodyAccess On
+		SecRule REQUEST_BODY "@contains malicious_payload" "id:200,phase:2,deny,status:403"
+	`
+
+	app.Use(NewCoraza(Config{
+		Directives: strings.NewReader(rules),
+		Block:      true,
+		InspectBody: true,
+	}))
+
+	app.Post("/submit", func(c *fiber.Ctx) error {
+		return c.SendString("Received")
+	})
+
+	// Case: Malicious Body
+	req := httptest.NewRequest("POST", "/submit", strings.NewReader("some malicious_payload data"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := app.Test(req)
+	utils.AssertEqual(t, nil, err)
+	utils.AssertEqual(t, 403, resp.StatusCode)
+}
+
+func TestMiddleware_BodyInspection_Disabled(t *testing.T) {
+	app := fiber.New()
+
+	// Rule that checks the request body
+	rules := `
+		SecRuleEngine On
+		SecRequestBodyAccess On
+		SecRule REQUEST_BODY "@contains malicious_payload" "id:200,phase:2,deny,status:403"
+	`
+
+	app.Use(NewCoraza(Config{
+		Directives:  strings.NewReader(rules),
+		Block:       true,
+		InspectBody: false, // Explicitly disable body inspection
+	}))
+
+	app.Post("/submit", func(c *fiber.Ctx) error {
+		return c.SendString("Received")
+	})
+
+	// Case: Malicious Body but Inspection Disabled
+	req := httptest.NewRequest("POST", "/submit", strings.NewReader("some malicious_payload data"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := app.Test(req)
+	utils.AssertEqual(t, nil, err)
+	utils.AssertEqual(t, 200, resp.StatusCode)
+}

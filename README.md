@@ -121,7 +121,10 @@ struct that implements `io.Writer`.
 | `Block` | `bool` | If `true`, stops the request on intervention. If `false`, logs but allows traffic. |
 | `Consumer` | `io.Writer` | Destination for audit logs. Defaults to `os.Stdout`. |
 | `Next` | `func(*Ctx) bool` | Filter to skip the middleware (e.g., for health check endpoints). |
-| `Callback` | `func()` | Optional low-level callback for Coraza error events. |
+| `Callback` | `func(types.MatchedRule)` | Optional low-level callback for Coraza error events. |
+| `WAF` | `coraza.WAF` | Optional pre-configured WAF instance. If provided, `Directives` is ignored. |
+| `InspectBody` | `bool` | If `true`, inspects the request body. Defaults to `true`. |
+| `FailClosed` | `bool` | If `true`, returns 500 on internal errors (safe). If `false`, allows request (bypass). Defaults to `true`. |
 
 ## Custom Consumer Examples
 

@@ -69,6 +69,8 @@ func configDefault(config ...Config) Config {
 		if userCfg.Directives != nil {
 			cfg.Directives = userCfg.Directives
 		}
+		cfg.InspectBody = userCfg.InspectBody
+		cfg.FailClosed = userCfg.FailClosed
 	}
 
 	if cfg.Consumer == nil {

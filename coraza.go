@@ -54,27 +54,24 @@ func NewCoraza(config ...Config) fiber.Handler {
 
 		if cfg.InspectBody && (c.Method() == "POST" || c.Method() == "PUT" || c.Method() == "PATCH") {
 			bodyBytes := bytes.NewReader(c.Body())
-			if it, _, err := tx.ReadRequestBodyFrom(bodyBytes); err == nil {
-				if cfg.FailClosed {
-					return c.SendStatus(fiber.StatusInternalServerError)
-				} else {
-					return c.Next()
-				}
-
-			} else if it != nil {
+			it, _, err := tx.ReadRequestBodyFrom(bodyBytes)
+			if it != nil {
 				return handleIntervention(c, it)
 			}
+			if err != nil {
+				if cfg.FailClosed {
+					return c.SendStatus(fiber.StatusInternalServerError)
+				}
+			}
 
-			tx, err := tx.ProcessRequestBody()
-			if tx != nil {
-				return handleIntervention(c, tx)
+			it, err = tx.ProcessRequestBody()
+			if it != nil {
+				return handleIntervention(c, it)
 			}
 
 			if err != nil {
 				if cfg.FailClosed {
 					return c.SendStatus(fiber.StatusInternalServerError)
-				} else {
-					return c.Next()
 				}
 			}
 		}
