@@ -1,6 +1,7 @@
 package coraza
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/corazawaf/coraza/v3/types"
@@ -49,6 +50,33 @@ func NewCoraza(config ...Config) fiber.Handler {
 			cfg.Consumer.Write(fmt.Appendf(nil, "[trafficMatch][%d] Coraza Responded with: %s",
 				it.RuleID, it.Action))
 			return handleIntervention(c, it)
+		}
+
+		if cfg.InspectBody && (c.Method() == "POST" || c.Method() == "PUT" || c.Method() == "PATCH") {
+			bodyBytes := bytes.NewReader(c.Body())
+			if it, _, err := tx.ReadRequestBodyFrom(bodyBytes); err == nil {
+				if cfg.FailClosed {
+					return c.SendStatus(fiber.StatusInternalServerError)
+				} else {
+					return c.Next()
+				}
+
+			} else if it != nil {
+				return handleIntervention(c, it)
+			}
+
+			tx, err := tx.ProcessRequestBody()
+			if tx != nil {
+				return handleIntervention(c, tx)
+			}
+
+			if err != nil {
+				if cfg.FailClosed {
+					return c.SendStatus(fiber.StatusInternalServerError)
+				} else {
+					return c.Next()
+				}
+			}
 		}
 
 		err := c.Next()

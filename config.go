@@ -30,14 +30,23 @@ type Config struct {
 
 	// coraza firewall instance
 	WAF coraza.WAF
+
+	// Defines whether to perform full body inspection
+	InspectBody bool
+
+	// Defines what whether to fail closed when an error is encounetered during
+	// the processing of a request
+	FailClosed bool
 }
 
 var ConfigDefault = Config{
-	Next:       nil,
-	Block:      false,
-	Consumer:   nil,
-	Directives: strings.NewReader(`SecRule REMOTE_ADDR "@rx .*" "id:1,phase:1,deny,status:403"`),
-	WAF:        nil,
+	Next:        nil,
+	Block:       false,
+	Consumer:    nil,
+	Directives:  strings.NewReader(`SecRule REMOTE_ADDR "@rx .*" "id:1,phase:1,deny,status:403"`),
+	WAF:         nil,
+	InspectBody: true,
+	FailClosed:  true,
 }
 
 func configDefault(config ...Config) Config {
