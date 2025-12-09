@@ -79,17 +79,17 @@ func configDefault(config ...Config) Config {
 	}
 
 	if cfg.WAF == nil {
-		directivesAsString, err := parseDirectives(cfg.Directives)
-		if err != nil {
-			log.Fatal(err)
-		}
+    directivesAsString, err := parseDirectives(cfg.Directives)
+    if err != nil {
+        log.Fatalf("CORAZA FATAL: Error parsing directives: %v", err)
+    }
 
-		waf, err := createWAF(directivesAsString, cfg.Callback)
-		if err != nil {
-			log.Printf("Failed to initialize WAF with %v", err)
-			return cfg
-		}
-		cfg.WAF = waf
+    waf, err := createWAF(directivesAsString, cfg.Callback)
+    if err != nil {
+        log.Fatalf("CORAZA FATAL: Failed to initialize WAF: %v", err)  
+    }
+    cfg.WAF = waf
+    log.Println("CORAZA: WAF initialized successfully")  
 	}
 
 	return cfg
