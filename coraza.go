@@ -100,9 +100,7 @@ func handleIntervention(c *fiber.Ctx, it *types.Interruption) error {
 	case "deny":
 		return c.Status(it.Status).SendString("")
 	case "redirect":
-		c.Redirect(it.Data)
-
+		return c.Redirect(it.Data)
 	}
-
 	return nil
 }
