@@ -36,7 +36,7 @@ func NewCoraza(config ...Config) fiber.Handler {
 
 		tx.ProcessConnection(c.IP(), 0, "", 0)
 
-		tx.ProcessURI(c.OriginalURL(), c.Method(), c.Protocol())
+		tx.ProcessURI(c.OriginalURL(), c.Method(), string(c.Request().Header.Protocol()))
 
 		c.Request().Header.VisitAll(func(key, value []byte) { tx.AddRequestHeader(string(key), string(value)) })
 
