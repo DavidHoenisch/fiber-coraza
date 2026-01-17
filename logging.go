@@ -2,10 +2,11 @@ package coraza
 
 import (
 	"encoding/json"
-	"github.com/corazawaf/coraza/v3/types"
-	"github.com/gofiber/fiber/v2"
 	"io"
 	"time"
+
+	"github.com/corazawaf/coraza/v3/types"
+	"github.com/gofiber/fiber/v2"
 )
 
 type AuditLog struct {
@@ -32,9 +33,8 @@ func writeAuditLog(c *fiber.Ctx, tx types.Transaction, consumer io.Writer) {
 	}
 
 	logEntry := AuditLog{
-		Timestamp: time.Now().Format(time.RFC3339),
-		ID:        tx.ID(),
-		// GET DATA FROM FIBER (Reliable & Fast)
+		Timestamp:    time.Now().Format(time.RFC3339),
+		ID:           tx.ID(),
 		ClientIP:     c.IP(),
 		RequestURI:   c.OriginalURL(),
 		Method:       c.Method(),

@@ -1,9 +1,8 @@
 # Fiber-Coraza
 
-
 ⚠️Work in progress and not production ready ⚠️
 
-A high-performance, design-first [Coraza WAF](https://coraza.io) middleware for
+A high-performance [Coraza WAF](https://coraza.io) middleware for
 [Go Fiber](https://gofiber.io).
 
 `fiber-coraza` brings the power of the OWASP Core Rule Set (CRS) and the coraza
@@ -59,9 +58,9 @@ func main() {
 
 ### 1\. The `io.Reader` Advantage (Embedding Rules)
 
-Unlike other WAF implementations that demand file paths (which break in Docker containers or compiled binaries), `fiber-coraza` accepts an `io.Reader` for its directives.
+Unlike other WAF implementations that demand file paths (which break in some Docker container configurations or compiled binaries), `fiber-coraza` accepts an `io.Reader` for its directives.
 
-This allows you to use Go's `embed` package to compile your WAF rules **inside your binary**. You can ship a single executable with no external config dependencies.
+This allows you to use Go's `embed` package to compile your WAF rules **inside your binary**, or, pass in the file from disk.
 
 **Example: Embedding OWASP CRS**
 
