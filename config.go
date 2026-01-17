@@ -13,10 +13,10 @@ import (
 type Config struct {
 	Next func(c *fiber.Ctx) bool
 
-	// block matched requests or just log them
+	// Block matched requests or just log them
 	Block bool
 
-	// defines a destination to log write events to.
+	// Defines a destination to log write events to.
 	// As long as the consumer implements the io.Writer
 	// interface any custom logger can be used
 	Consumer io.Writer
@@ -28,7 +28,7 @@ type Config struct {
 	// Rerectives to use.
 	Directives io.Reader
 
-	// coraza firewall instance
+	// Coraza firewall instance
 	WAF coraza.WAF
 
 	// Defines whether to perform full body inspection
@@ -79,17 +79,17 @@ func configDefault(config ...Config) Config {
 	}
 
 	if cfg.WAF == nil {
-    directivesAsString, err := parseDirectives(cfg.Directives)
-    if err != nil {
-        log.Fatalf("CORAZA FATAL: Error parsing directives: %v", err)
-    }
+		directivesAsString, err := parseDirectives(cfg.Directives)
+		if err != nil {
+			log.Fatalf("CORAZA FATAL: Error parsing directives: %v", err)
+		}
 
-    waf, err := createWAF(directivesAsString, cfg.Callback)
-    if err != nil {
-        log.Fatalf("CORAZA FATAL: Failed to initialize WAF: %v", err)  
-    }
-    cfg.WAF = waf
-    log.Println("CORAZA: WAF initialized successfully")  
+		waf, err := createWAF(directivesAsString, cfg.Callback)
+		if err != nil {
+			log.Fatalf("CORAZA FATAL: Failed to initialize WAF: %v", err)
+		}
+		cfg.WAF = waf
+		log.Println("CORAZA: WAF initialized successfully")
 	}
 
 	return cfg

@@ -3,6 +3,7 @@ package coraza
 import (
 	"bytes"
 	"fmt"
+	"log"
 
 	"github.com/corazawaf/coraza/v3/types"
 	"github.com/gofiber/fiber/v2"
@@ -29,7 +30,7 @@ func NewCoraza(config ...Config) fiber.Handler {
 			}
 
 			if err := tx.Close(); err != nil {
-				// something
+				log.Printf("CORAZA: error closing TX: %v \n", err)
 			}
 
 		}()
