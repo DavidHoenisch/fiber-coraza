@@ -56,7 +56,7 @@ func main() {
 
 ### 1\. The `io.Reader` Advantage (Embedding Rules)
 
-Unlike other WAF implementations that demand file paths (which break in some Docker container configurations or compiled binaries), `fiber-coraza` accepts an `io.Reader` for its directives.
+`fiber-coraza` accepts an `io.Reader` for its directives.
 
 This allows you to use Go's `embed` package to compile your WAF rules **inside your binary**, or, pass in the file from disk.
 
