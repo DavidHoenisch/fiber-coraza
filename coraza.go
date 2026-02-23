@@ -65,7 +65,12 @@ func NewCoraza(config ...Config) fiber.Handler {
 				}
 			}
 
-			it, err = tx.ProcessRequestBody()
+		}
+
+		// Always run phase 2 so ARGS/query-string rules execute for all methods.
+		// Body bytes are only fed for methods that can carry a request body.
+		if cfg.InspectBody {
+			it, err := tx.ProcessRequestBody()
 			if it != nil {
 				return handleIntervention(c, it)
 			}
