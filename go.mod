@@ -4,9 +4,8 @@ go 1.25.4
 
 require (
 	github.com/corazawaf/coraza/v3 v3.3.3
-	github.com/gofiber/fiber/v2 v2.52.11
+	github.com/gofiber/fiber/v2 v2.52.12
 	github.com/gofiber/fiber/v3 v3.1.0
-	github.com/valyala/fasthttp v1.69.0
 )
 
 require (
@@ -29,6 +28,7 @@ require (
 	github.com/tinylib/msgp v1.6.3 // indirect
 	github.com/valllabh/ocsf-schema-golang v1.0.3 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
+	github.com/valyala/fasthttp v1.69.0 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
