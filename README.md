@@ -17,10 +17,26 @@ configuration and powerful logging flexibility.
 ## Installation
 
 ```bash
-go get github.com/DavidHoenisch/fiber-coraza
+# Fiber v2 middleware (explicit versioned package)
+go get github.com/DavidHoenisch/fiber-coraza/v2
+
+# Fiber v3 middleware
+go get github.com/DavidHoenisch/fiber-coraza/v3
 ```
 
+## Version Support
+
+- `github.com/DavidHoenisch/fiber-coraza/v2` -> Fiber `v2` (explicit package)
+- `github.com/DavidHoenisch/fiber-coraza/v3` -> Fiber `v3`
+
+## Breaking Change
+
+The root package `github.com/DavidHoenisch/fiber-coraza` no longer exports middleware APIs.
+Use explicit versioned imports (`/v2` or `/v3`).
+
 ## Quick Start
+
+### Fiber v2
 
 ```go
 package main
@@ -28,7 +44,7 @@ package main
 import (
 	"strings"
 	"github.com/gofiber/fiber/v2"
-	"github.com/DavidHoenisch/fiber-coraza"
+	"github.com/DavidHoenisch/fiber-coraza/v2"
 )
 
 func main() {
@@ -52,6 +68,37 @@ func main() {
 }
 ```
 
+### Fiber v3
+
+```go
+package main
+
+import (
+	"strings"
+
+	coraza "github.com/DavidHoenisch/fiber-coraza/v3"
+	"github.com/gofiber/fiber/v3"
+)
+
+func main() {
+	app := fiber.New()
+
+	app.Use(coraza.NewCoraza(coraza.Config{
+		Directives: strings.NewReader(`
+			SecRuleEngine On
+			SecRule REMOTE_ADDR "@rx .*" "id:1,phase:1,deny,status:403"
+		`),
+		Block: true,
+	}))
+
+	app.Get("/", func(c fiber.Ctx) error {
+		return c.SendString("Hello, Secure World!")
+	})
+
+	app.Listen(":3000")
+}
+```
+
 ## Design Philosophy
 
 ### 1\. The `io.Reader` Advantage (Embedding Rules)
@@ -68,7 +115,7 @@ package main
 import (
 	"embed"
 	"io/fs"
-	"github.com/DavidHoenisch/fiber-coraza"
+	"github.com/DavidHoenisch/fiber-coraza/v2"
 )
 
 //go:embed coraza.conf crs-setup.conf rules/*.conf
@@ -117,7 +164,7 @@ struct that implements `io.Writer`.
 | `Directives` | `io.Reader` | Source of the Seclang configuration (Rules). |
 | `Block` | `bool` | If `true`, stops the request on intervention. If `false`, logs but allows traffic. |
 | `Consumer` | `io.Writer` | Destination for audit logs. Defaults to `os.Stdout`. |
-| `Next` | `func(*Ctx) bool` | Filter to skip the middleware (e.g., for health check endpoints). |
+| `Next` | `func(*fiber.Ctx) bool` (v2) / `func(fiber.Ctx) bool` (v3) | Filter to skip the middleware (e.g., for health check endpoints). |
 | `Callback` | `func(types.MatchedRule)` | Optional low-level callback for Coraza error events. |
 | `WAF` | `coraza.WAF` | Optional pre-configured WAF instance. If provided, `Directives` is ignored. |
 | `InspectBody` | `bool` | If `true`, inspects the request body. Defaults to `true`. |
