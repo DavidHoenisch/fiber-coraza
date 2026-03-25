@@ -104,7 +104,7 @@ func handleIntervention(c *fiber.Ctx, it *types.Interruption) error {
 		c.Status(it.Status)
 		return c.Context().Conn().Close()
 	case "deny":
-		return c.Status(it.Status).SendString("")
+		return c.Status(it.Status).SendString(fmt.Sprintf("Rule %d blocked", it.RuleID))
 	case "redirect":
 		return c.Redirect(it.Data)
 	}
