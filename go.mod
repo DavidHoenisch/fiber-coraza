@@ -4,8 +4,8 @@ go 1.25.4
 
 require (
 	github.com/corazawaf/coraza/v3 v3.3.3
-	github.com/gofiber/fiber/v2 v2.52.12
-	github.com/gofiber/fiber/v3 v3.2.0
+	github.com/gofiber/fiber/v2 v2.52.13
+	github.com/gofiber/fiber/v3 v3.1.0
 )
 
 require (
