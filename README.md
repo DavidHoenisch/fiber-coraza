@@ -542,3 +542,26 @@ When reporting bugs, please include:
 ## License
 
 MIT
+
+## Development Testing
+
+Run unit tests:
+
+```bash
+go test ./...
+```
+
+Run fuzz tests:
+
+```bash
+make fuzz FUZZTIME=10s
+```
+
+Run mutation tests with the avito-tech fork of `go-mutesting`:
+
+```bash
+go install github.com/avito-tech/go-mutesting/cmd/go-mutesting@latest
+make mutation
+```
+
+Mutation testing uses `.go-mutesting.yml` and `.go-mutesting-blacklist` for equivalent/unobservable mutants. You can target one package with `make mutation-v2` or `make mutation-v3`, and override the per-mutant timeout with `MUTATION_TIMEOUT=120`.

@@ -69,6 +69,9 @@ func configDefault(config ...Config) Config {
 		if userCfg.Directives != nil {
 			cfg.Directives = userCfg.Directives
 		}
+		if userCfg.WAF != nil {
+			cfg.WAF = userCfg.WAF
+		}
 		cfg.InspectBody = userCfg.InspectBody
 		cfg.FailClosed = userCfg.FailClosed
 	}
