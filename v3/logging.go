@@ -26,8 +26,12 @@ type LogRule struct {
 	Data    string `json:"data"`
 }
 
-func writeAuditLog(c fiber.Ctx, tx types.Transaction, consumer io.Writer, IgnoreAllowed bool) {
+func writeAuditLog(c fiber.Ctx, tx types.Transaction, consumer io.Writer, ignoreAllowed bool) {
 	if len(tx.MatchedRules()) == 0 {
+		return
+	}
+
+	if ignoreAllowed && !tx.IsInterrupted() {
 		return
 	}
 
@@ -46,10 +50,6 @@ func writeAuditLog(c fiber.Ctx, tx types.Transaction, consumer io.Writer, Ignore
 	}
 
 	for _, r := range tx.MatchedRules() {
-		if IgnoreAllowed {
-			continue
-		}
-
 		logEntry.MatchedRules = append(logEntry.MatchedRules, LogRule{
 			ID:      r.Rule().ID(),
 			Message: r.ErrorLog(),

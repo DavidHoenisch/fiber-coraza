@@ -2,6 +2,7 @@ package coraza
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http/httptest"
@@ -148,14 +149,15 @@ func TestHandleIntervention(t *testing.T) {
 func TestConfigDefaultAppliesDefaultsAndOverrides(t *testing.T) {
 	var consumer bytes.Buffer
 	cfg := configDefault(Config{
-		Directives:  strings.NewReader(`SecRuleEngine On`),
-		Consumer:    &consumer,
-		Block:       true,
-		InspectBody: true,
-		FailClosed:  true,
+		Directives:              strings.NewReader(`SecRuleEngine On`),
+		Consumer:                &consumer,
+		Block:                   true,
+		InspectBody:             true,
+		FailClosed:              true,
+		LoggerIgnoreAllowEvents: true,
 	})
 
-	if !cfg.Block || !cfg.InspectBody || !cfg.FailClosed {
+	if !cfg.Block || !cfg.InspectBody || !cfg.FailClosed || !cfg.LoggerIgnoreAllowEvents {
 		t.Fatalf("boolean options not applied: %+v", cfg)
 	}
 	if cfg.Consumer != &consumer {
@@ -213,6 +215,46 @@ func TestMiddleware_DetectOnlyAllowsAndLogs(t *testing.T) {
 	}
 	if !strings.Contains(consumer.String(), "Detected with skipped action") {
 		t.Fatalf("expected detection log, got %q", consumer.String())
+	}
+}
+
+func TestMiddleware_LoggerIgnoreAllowEventsSkipsAllowedAuditLogs(t *testing.T) {
+	var consumer bytes.Buffer
+	app := testApp(t, Config{
+		Directives:              strings.NewReader(`SecRule ARGS:id "@streq safe" "id:10,phase:1,pass,log,msg:'safe request matched'"`),
+		Consumer:                &consumer,
+		LoggerIgnoreAllowEvents: true,
+	})
+
+	if status := doReq(t, app, "GET", "/?id=safe", nil); status != fiber.StatusOK {
+		t.Fatalf("expected allowed request status 200, got %d", status)
+	}
+	if got := consumer.String(); got != "" {
+		t.Fatalf("expected allowed audit log to be ignored, got %q", got)
+	}
+}
+
+func TestMiddleware_LoggerWritesAllowEventsWhenIgnoreDisabled(t *testing.T) {
+	var consumer bytes.Buffer
+	app := testApp(t, Config{
+		Directives:              strings.NewReader(`SecRule ARGS:id "@streq safe" "id:10,phase:1,pass,log,msg:'safe request matched'"`),
+		Consumer:                &consumer,
+		LoggerIgnoreAllowEvents: false,
+	})
+
+	if status := doReq(t, app, "GET", "/?id=safe", nil); status != fiber.StatusOK {
+		t.Fatalf("expected allowed request status 200, got %d", status)
+	}
+
+	var entry AuditLog
+	if err := json.Unmarshal(bytes.TrimSpace(consumer.Bytes()), &entry); err != nil {
+		t.Fatalf("expected JSON audit log, got %q: %v", consumer.String(), err)
+	}
+	if entry.Action != "Allow" {
+		t.Fatalf("expected allow audit action, got %q", entry.Action)
+	}
+	if len(entry.MatchedRules) != 1 || entry.MatchedRules[0].ID != 10 {
+		t.Fatalf("unexpected matched rules: %+v", entry.MatchedRules)
 	}
 }
 

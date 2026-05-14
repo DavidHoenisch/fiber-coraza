@@ -26,9 +26,13 @@ type LogRule struct {
 	Data    string `json:"data"`
 }
 
-func writeAuditLog(c *fiber.Ctx, tx types.Transaction, consumer io.Writer) {
+func writeAuditLog(c *fiber.Ctx, tx types.Transaction, consumer io.Writer, ignoreAllowed bool) {
 	// Only log if rules were matched (or remove check to log all)
 	if len(tx.MatchedRules()) == 0 {
+		return
+	}
+
+	if ignoreAllowed && !tx.IsInterrupted() {
 		return
 	}
 

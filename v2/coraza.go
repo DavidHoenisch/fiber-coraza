@@ -26,7 +26,7 @@ func NewCoraza(config ...Config) fiber.Handler {
 			tx.ProcessLogging()
 
 			if cfg.Consumer != nil {
-				writeAuditLog(c, tx, cfg.Consumer)
+				writeAuditLog(c, tx, cfg.Consumer, cfg.LoggerIgnoreAllowEvents)
 			}
 
 			if err := tx.Close(); err != nil {

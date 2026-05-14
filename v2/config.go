@@ -37,16 +37,23 @@ type Config struct {
 	// Defines what whether to fail closed when an error is encounetered during
 	// the processing of a request
 	FailClosed bool
+
+	// Defines if the logger should ignore connections
+	// that are allowed. This is useful for reducing the
+	// amount of log data from the WAF...coraza can be very
+	// noisy
+	LoggerIgnoreAllowEvents bool
 }
 
 var ConfigDefault = Config{
-	Next:        nil,
-	Block:       false,
-	Consumer:    nil,
-	Directives:  strings.NewReader(`SecRule REMOTE_ADDR "@rx .*" "id:1,phase:1,deny,status:403"`),
-	WAF:         nil,
-	InspectBody: true,
-	FailClosed:  true,
+	Next:                    nil,
+	Block:                   false,
+	Consumer:                nil,
+	Directives:              strings.NewReader(`SecRule REMOTE_ADDR "@rx .*" "id:1,phase:1,deny,status:403"`),
+	WAF:                     nil,
+	InspectBody:             true,
+	FailClosed:              true,
+	LoggerIgnoreAllowEvents: true,
 }
 
 func configDefault(config ...Config) Config {
@@ -74,6 +81,7 @@ func configDefault(config ...Config) Config {
 		}
 		cfg.InspectBody = userCfg.InspectBody
 		cfg.FailClosed = userCfg.FailClosed
+		cfg.LoggerIgnoreAllowEvents = userCfg.LoggerIgnoreAllowEvents
 	}
 
 	if cfg.Consumer == nil {
