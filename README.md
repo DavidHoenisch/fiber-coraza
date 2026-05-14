@@ -13,6 +13,7 @@ configuration and powerful logging flexibility.
   * **🔍 Hybrid Logging:** Combines Fiber's fast request access with Coraza's rule logic to produce structured JSON logs with zero extra allocations.
   * **📦 Portable Rules:** Accepts generic `io.Reader` for directives, allowing rules to be compiled directly into your binary using `//go:embed`.
   * **🔌 Plug-and-Play Consumers:** Use any `io.Writer` as a log destination—no complex plugin registration required.
+  * **🧹 Allow-Event Filtering:** Skip audit logs for allowed rule matches by default to keep WAF logs focused on blocks.
 
 ## Installation
 
@@ -142,6 +143,7 @@ struct that implements `io.Writer`.
   * **Structured Data:** The middleware automatically constructs a clean JSON object containing the timestamp, client IP, method, and matched rules.
   * **Hybrid Approach:** It pulls request data (IP, URI) directly from Fiber (fast) and security decision data from Coraza.
   * **JSON Output:** The data sent to your consumer looks like this:
+  * **Allow-event filtering:** By default, `LoggerIgnoreAllowEvents` is `true`, so audit logs are only written for blocked/interrupted transactions. Set it to `false` if you also want JSON audit logs for matched rules that ultimately allow the request.
 
 <!-- end list -->
 
@@ -157,6 +159,19 @@ struct that implements `io.Writer`.
 }
 ```
 
+To include audit logs for allowed requests that matched `pass`/`log` rules, disable allow-event filtering:
+
+```go
+app.Use(coraza.NewCoraza(coraza.Config{
+    Consumer:                os.Stdout,
+    LoggerIgnoreAllowEvents: false,
+    Directives: strings.NewReader(`
+        SecRuleEngine On
+        SecRule ARGS:id "@streq safe" "id:10,phase:1,pass,log,msg:'safe request matched'"
+    `),
+}))
+```
+
 ## Configuration
 
 | Field | Type | Description |
@@ -169,6 +184,7 @@ struct that implements `io.Writer`.
 | `WAF` | `coraza.WAF` | Optional pre-configured WAF instance. If provided, `Directives` is ignored. |
 | `InspectBody` | `bool` | If `true`, inspects the request body. Defaults to `true`. |
 | `FailClosed` | `bool` | If `true`, returns 500 on internal errors (safe). If `false`, allows request (bypass). Defaults to `true`. |
+| `LoggerIgnoreAllowEvents` | `bool` | If `true`, suppresses audit logs for matched rules that allow the request. Blocked/interrupted transactions are still logged. Defaults to `true`; set to `false` to log allowed matches. |
 
 ## Essential WAF Directives
 
