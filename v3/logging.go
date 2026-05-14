@@ -26,7 +26,7 @@ type LogRule struct {
 	Data    string `json:"data"`
 }
 
-func writeAuditLog(c fiber.Ctx, tx types.Transaction, consumer io.Writer) {
+func writeAuditLog(c fiber.Ctx, tx types.Transaction, consumer io.Writer, IgnoreAllowed bool) {
 	if len(tx.MatchedRules()) == 0 {
 		return
 	}
@@ -46,6 +46,10 @@ func writeAuditLog(c fiber.Ctx, tx types.Transaction, consumer io.Writer) {
 	}
 
 	for _, r := range tx.MatchedRules() {
+		if IgnoreAllowed {
+			continue
+		}
+
 		logEntry.MatchedRules = append(logEntry.MatchedRules, LogRule{
 			ID:      r.Rule().ID(),
 			Message: r.ErrorLog(),
