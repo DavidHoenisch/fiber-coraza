@@ -48,14 +48,14 @@ func NewCoraza(config ...Config) fiber.Handler {
 			}
 
 			cfg.Consumer.Write(fmt.Appendf(nil, "[trafficMatch][%d] Coraza Responded with: %s", it.RuleID, it.Action))
-			return handleIntervention(c, it)
+			return handleIntervention(c, it, cfg)
 		}
 
 		if cfg.InspectBody && (c.Method() == "POST" || c.Method() == "PUT" || c.Method() == "PATCH") {
 			bodyBytes := bytes.NewReader(c.Body())
 			it, _, err := tx.ReadRequestBodyFrom(bodyBytes)
 			if it != nil {
-				return handleIntervention(c, it)
+				return handleIntervention(c, it, cfg)
 			}
 			if err != nil && cfg.FailClosed {
 				return c.SendStatus(fiber.StatusInternalServerError)
@@ -65,7 +65,7 @@ func NewCoraza(config ...Config) fiber.Handler {
 		if cfg.InspectBody {
 			it, err := tx.ProcessRequestBody()
 			if it != nil {
-				return handleIntervention(c, it)
+				return handleIntervention(c, it, cfg)
 			}
 
 			if err != nil && cfg.FailClosed {
@@ -84,7 +84,7 @@ func NewCoraza(config ...Config) fiber.Handler {
 	}
 }
 
-func handleIntervention(c fiber.Ctx, it *types.Interruption) error {
+func handleIntervention(c fiber.Ctx, it *types.Interruption, cfg Config) error {
 	switch it.Action {
 	case "drop":
 		if it.Status > 0 {
@@ -92,7 +92,20 @@ func handleIntervention(c fiber.Ctx, it *types.Interruption) error {
 		}
 		return c.Drop()
 	case "deny":
-		return c.Status(it.Status).SendString(fmt.Sprintf("Rule %d blocked", it.RuleID))
+		status := it.Status
+		if status <= 0 {
+			status = fiber.StatusForbidden
+		}
+		message := cfg.DenyMessage
+		if message == "" {
+			message = "Request could not be processed"
+		}
+		return c.Status(status).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    status,
+				"message": message,
+			},
+		})
 	case "redirect":
 		redirect := c.Redirect()
 		if it.Status > 0 {

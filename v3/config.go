@@ -16,6 +16,10 @@ type Config struct {
 	// Block matched requests or just log them
 	Block bool
 
+	// DenyMessage is returned to clients when a request is blocked.
+	// Defaults to "Request could not be processed".
+	DenyMessage string
+
 	// Defines a destination to log write events to.
 	// As long as the consumer implements the io.Writer
 	// interface any custom logger can be used
@@ -66,6 +70,9 @@ func configDefault(config ...Config) Config {
 		}
 		if userCfg.Block {
 			cfg.Block = true
+		}
+		if userCfg.DenyMessage != "" {
+			cfg.DenyMessage = userCfg.DenyMessage
 		}
 		if userCfg.Consumer != nil {
 			cfg.Consumer = userCfg.Consumer

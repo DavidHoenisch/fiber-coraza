@@ -89,16 +89,16 @@ func TestConsumerWrites(t *testing.T) {
 func TestHandleIntervention(t *testing.T) {
 	app := fiber.New()
 	app.Get("/deny", func(c *fiber.Ctx) error {
-		return handleIntervention(c, &types.Interruption{Action: "deny", Status: fiber.StatusTeapot})
+		return handleIntervention(c, &types.Interruption{Action: "deny", Status: fiber.StatusTeapot, RuleID: 949110}, Config{})
 	})
 	app.Get("/redirect", func(c *fiber.Ctx) error {
-		return handleIntervention(c, &types.Interruption{Action: "redirect", Status: fiber.StatusTemporaryRedirect, Data: "/login"})
+		return handleIntervention(c, &types.Interruption{Action: "redirect", Status: fiber.StatusTemporaryRedirect, Data: "/login"}, Config{})
 	})
 	app.Get("/drop", func(c *fiber.Ctx) error {
-		return handleIntervention(c, &types.Interruption{Action: "drop", Status: fiber.StatusTeapot})
+		return handleIntervention(c, &types.Interruption{Action: "drop", Status: fiber.StatusTeapot}, Config{})
 	})
 	app.Get("/none", func(c *fiber.Ctx) error {
-		if err := handleIntervention(c, &types.Interruption{Action: "pass", Status: fiber.StatusForbidden}); err != nil {
+		if err := handleIntervention(c, &types.Interruption{Action: "pass", Status: fiber.StatusForbidden}, Config{}); err != nil {
 			return err
 		}
 		return c.SendString("continued")
@@ -108,7 +108,30 @@ func TestHandleIntervention(t *testing.T) {
 		t.Fatalf("deny status = %d", status)
 	}
 
-	resp, err := app.Test(httptest.NewRequest("GET", "/redirect", nil))
+	resp, err := app.Test(httptest.NewRequest("GET", "/deny", nil))
+	if err != nil {
+		t.Fatalf("deny request failed: %v", err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read deny body: %v", err)
+	}
+	if strings.Contains(string(body), "Rule ") || strings.Contains(string(body), "949110") {
+		t.Fatalf("deny body leaked rule details: %q", body)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatalf("deny body is not JSON: %q (%v)", body, err)
+	}
+	errObj, ok := payload["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("deny body missing error object: %q", body)
+	}
+	if errObj["message"] != "Request could not be processed" {
+		t.Fatalf("unexpected deny message: %#v", errObj["message"])
+	}
+
+	resp, err = app.Test(httptest.NewRequest("GET", "/redirect", nil))
 	if err != nil {
 		t.Fatalf("redirect request failed: %v", err)
 	}
