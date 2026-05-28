@@ -26,20 +26,20 @@ type LogRule struct {
 	Data    string `json:"data"`
 }
 
-func writeAuditLog(c *fiber.Ctx, tx types.Transaction, consumer io.Writer, ignoreAllowed bool) {
+func writeAuditLog(c *fiber.Ctx, tx types.Transaction, consumer io.Writer, cfg Config) {
 	// Only log if rules were matched (or remove check to log all)
 	if len(tx.MatchedRules()) == 0 {
 		return
 	}
 
-	if ignoreAllowed && !tx.IsInterrupted() {
+	if cfg.LoggerIgnoreAllowEvents && !tx.IsInterrupted() {
 		return
 	}
 
 	logEntry := AuditLog{
 		Timestamp:    time.Now().Format(time.RFC3339),
 		ID:           tx.ID(),
-		ClientIP:     c.IP(),
+		ClientIP:     clientIP(c, cfg),
 		RequestURI:   c.OriginalURL(),
 		Method:       c.Method(),
 		ResponseCode: c.Response().StatusCode(),

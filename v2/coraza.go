@@ -26,7 +26,7 @@ func NewCoraza(config ...Config) fiber.Handler {
 			tx.ProcessLogging()
 
 			if cfg.Consumer != nil {
-				writeAuditLog(c, tx, cfg.Consumer, cfg.LoggerIgnoreAllowEvents)
+				writeAuditLog(c, tx, cfg.Consumer, cfg)
 			}
 
 			if err := tx.Close(); err != nil {
@@ -35,7 +35,7 @@ func NewCoraza(config ...Config) fiber.Handler {
 
 		}()
 
-		tx.ProcessConnection(c.IP(), 0, "", 0)
+		tx.ProcessConnection(clientIP(c, cfg), 0, "", 0)
 
 		tx.ProcessURI(c.OriginalURL(), c.Method(), string(c.Request().Header.Protocol()))
 

@@ -6,6 +6,7 @@ require (
 	github.com/corazawaf/coraza/v3 v3.3.3
 	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/gofiber/fiber/v3 v3.1.0
+	golang.org/x/tools v0.43.0
 )
 
 require (

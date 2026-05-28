@@ -35,13 +35,15 @@ type mockTransaction struct {
 	closed           bool
 	closeErr         error
 	connectionCalled bool
+	clientIP         string
 	clientPort       int
 	serverPort       int
 	responseCodes    []int
 }
 
-func (tx *mockTransaction) ProcessConnection(_ string, cPort int, _ string, sPort int) {
+func (tx *mockTransaction) ProcessConnection(client string, cPort int, _ string, sPort int) {
 	tx.connectionCalled = true
+	tx.clientIP = client
 	tx.clientPort = cPort
 	tx.serverPort = sPort
 }
@@ -200,6 +202,44 @@ func TestMiddleware_MockTransactionLifecycleAndAuditLog(t *testing.T) {
 		if !strings.Contains(log, want) {
 			t.Fatalf("audit log %q does not contain %s", log, want)
 		}
+	}
+}
+
+func TestMiddleware_MockTransactionAuditLogUsesClientIpFromHeader(t *testing.T) {
+	tx := &mockTransaction{matchedRules: []types.MatchedRule{mockMatchedRule{}}, interrupted: true}
+	var consumer bytes.Buffer
+	app := testApp(t, Config{
+		WAF:                &mockWAF{tx: tx},
+		Consumer:           &consumer,
+		ClientIpFromHeader: true,
+		ClientIpHeader:     "X-Real-IP",
+	})
+
+	if status := doReqWithHeaders(t, app, "GET", "/audit", nil, map[string]string{
+		"X-Real-IP": "203.0.113.10",
+	}); status != fiber.StatusOK {
+		t.Fatalf("status = %d", status)
+	}
+	if !strings.Contains(consumer.String(), `"client_ip":"203.0.113.10"`) {
+		t.Fatalf("audit log missing header client IP: %q", consumer.String())
+	}
+}
+
+func TestMiddleware_ProcessConnectionUsesClientIpFromHeader(t *testing.T) {
+	tx := &mockTransaction{}
+	app := testApp(t, Config{
+		WAF:                &mockWAF{tx: tx},
+		ClientIpFromHeader: true,
+		ClientIpHeader:     "X-Real-IP",
+	})
+
+	if status := doReqWithHeaders(t, app, "GET", "/", nil, map[string]string{
+		"X-Real-IP": "203.0.113.10",
+	}); status != fiber.StatusOK {
+		t.Fatalf("status = %d", status)
+	}
+	if tx.clientIP != "203.0.113.10" {
+		t.Fatalf("ProcessConnection client IP = %q, want 203.0.113.10", tx.clientIP)
 	}
 }
 

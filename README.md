@@ -185,6 +185,8 @@ app.Use(coraza.NewCoraza(coraza.Config{
 | `InspectBody` | `bool` | If `true`, inspects the request body. Defaults to `true`. |
 | `FailClosed` | `bool` | If `true`, returns 500 on internal errors (safe). If `false`, allows request (bypass). Defaults to `true`. |
 | `LoggerIgnoreAllowEvents` | `bool` | If `true`, suppresses audit logs for matched rules that allow the request. Blocked/interrupted transactions are still logged. Defaults to `true`; set to `false` to log allowed matches. |
+| `ClientIpFromHeader` | `bool` | If `true`, Coraza `REMOTE_ADDR` evaluation and audit logs use the configured header for the client IP instead of `c.IP()`. Defaults to `false`. |
+| `ClientIpHeader` | `string` | Header name to read the client IP from when `ClientIpFromHeader` is `true`. Defaults to `X-Forwarded-By`. Useful when the app sits behind a load balancer or reverse proxy. |
 
 ## Essential WAF Directives
 

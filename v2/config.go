@@ -47,6 +47,15 @@ type Config struct {
 	// amount of log data from the WAF...coraza can be very
 	// noisy
 	LoggerIgnoreAllowEvents bool
+
+	// Defines whether Coraza and audit logs should trust c.IP() or
+	// extract the client IP from a header. If set to true, ClientIpHeader
+	// can be configured. Defaults to `X-Forwarded-By`.
+	ClientIpFromHeader bool
+
+	// Defines the header to pull the client IP from when the direct
+	// connection source should not be trusted (for example behind a load balancer).
+	ClientIpHeader string
 }
 
 var ConfigDefault = Config{
@@ -58,6 +67,8 @@ var ConfigDefault = Config{
 	InspectBody:             true,
 	FailClosed:              true,
 	LoggerIgnoreAllowEvents: true,
+	ClientIpFromHeader:      false,
+	ClientIpHeader:          "X-Forwarded-By",
 }
 
 func configDefault(config ...Config) Config {
@@ -89,6 +100,13 @@ func configDefault(config ...Config) Config {
 		cfg.InspectBody = userCfg.InspectBody
 		cfg.FailClosed = userCfg.FailClosed
 		cfg.LoggerIgnoreAllowEvents = userCfg.LoggerIgnoreAllowEvents
+
+		if userCfg.ClientIpFromHeader != false {
+			cfg.ClientIpFromHeader = true
+			if userCfg.ClientIpHeader != "" {
+				cfg.ClientIpHeader = userCfg.ClientIpHeader
+			}
+		}
 	}
 
 	if cfg.Consumer == nil {

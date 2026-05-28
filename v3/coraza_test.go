@@ -29,10 +29,17 @@ func testApp(t *testing.T, cfg Config) *fiber.App {
 }
 
 func doReq(t *testing.T, app *fiber.App, method, target string, body io.Reader) int {
+	return doReqWithHeaders(t, app, method, target, body, nil)
+}
+
+func doReqWithHeaders(t *testing.T, app *fiber.App, method, target string, body io.Reader, headers map[string]string) int {
 	t.Helper()
 	req := httptest.NewRequest(method, target, body)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
 	}
 	resp, err := app.Test(req)
 	if err != nil {
@@ -191,6 +198,36 @@ func TestConfigDefaultAppliesDefaultsAndOverrides(t *testing.T) {
 	}
 }
 
+func TestConfigDefaultAppliesClientIpOptions(t *testing.T) {
+	defaultCfg := configDefault()
+	if defaultCfg.ClientIpFromHeader {
+		t.Fatal("expected ClientIpFromHeader default false")
+	}
+	if defaultCfg.ClientIpHeader != "X-Forwarded-By" {
+		t.Fatalf("unexpected default ClientIpHeader: %q", defaultCfg.ClientIpHeader)
+	}
+
+	cfg := configDefault(Config{
+		Directives:         strings.NewReader(`SecRuleEngine On`),
+		ClientIpFromHeader: true,
+		ClientIpHeader:     "X-Real-IP",
+	})
+	if !cfg.ClientIpFromHeader {
+		t.Fatal("expected ClientIpFromHeader override")
+	}
+	if cfg.ClientIpHeader != "X-Real-IP" {
+		t.Fatalf("unexpected ClientIpHeader override: %q", cfg.ClientIpHeader)
+	}
+
+	cfg = configDefault(Config{
+		Directives:         strings.NewReader(`SecRuleEngine On`),
+		ClientIpFromHeader: true,
+	})
+	if cfg.ClientIpHeader != "X-Forwarded-By" {
+		t.Fatalf("expected default header when override empty: %q", cfg.ClientIpHeader)
+	}
+}
+
 func TestMiddleware_AllowRequest(t *testing.T) {
 	app := testApp(t, Config{
 		Directives: strings.NewReader(`SecRule ARGS:id "@streq attack" "id:1,phase:1,deny,status:403"`),
@@ -281,6 +318,49 @@ func TestMiddleware_LoggerWritesAllowEventsWhenIgnoreDisabled(t *testing.T) {
 	}
 }
 
+func TestMiddleware_AuditLogUsesClientIpFromHeader(t *testing.T) {
+	var consumer bytes.Buffer
+	app := testApp(t, Config{
+		Directives:              strings.NewReader(`SecRule ARGS:id "@streq safe" "id:10,phase:1,pass,log,msg:'safe request matched'"`),
+		Consumer:                &consumer,
+		LoggerIgnoreAllowEvents: false,
+		ClientIpFromHeader:      true,
+		ClientIpHeader:          "X-Real-IP",
+	})
+
+	if status := doReqWithHeaders(t, app, "GET", "/?id=safe", nil, map[string]string{
+		"X-Real-IP": "203.0.113.10",
+	}); status != fiber.StatusOK {
+		t.Fatalf("expected allowed request status 200, got %d", status)
+	}
+
+	var entry AuditLog
+	if err := json.Unmarshal(bytes.TrimSpace(consumer.Bytes()), &entry); err != nil {
+		t.Fatalf("expected JSON audit log, got %q: %v", consumer.String(), err)
+	}
+	if entry.ClientIP != "203.0.113.10" {
+		t.Fatalf("expected client IP from header, got %q", entry.ClientIP)
+	}
+}
+
+func TestMiddleware_RemoteAddrRuleUsesClientIpFromHeader(t *testing.T) {
+	app := testApp(t, Config{
+		Directives:         strings.NewReader(`SecRule REMOTE_ADDR "@streq 203.0.113.10" "id:1,phase:1,deny,status:403"`),
+		Block:              true,
+		ClientIpFromHeader: true,
+		ClientIpHeader:     "X-Real-IP",
+	})
+
+	if status := doReq(t, app, "GET", "/", nil); status != fiber.StatusOK {
+		t.Fatalf("expected request without header to be allowed, got %d", status)
+	}
+	if status := doReqWithHeaders(t, app, "GET", "/", nil, map[string]string{
+		"X-Real-IP": "203.0.113.10",
+	}); status != fiber.StatusForbidden {
+		t.Fatalf("expected request with matching header IP to be blocked, got %d", status)
+	}
+}
+
 func TestMiddleware_BodyInspectionBlocksRequestBody(t *testing.T) {
 	for _, method := range []string{"POST", "PUT", "PATCH"} {
 		t.Run(method, func(t *testing.T) {
@@ -326,13 +406,18 @@ func FuzzParseDirectives(f *testing.F) {
 }
 
 func FuzzMiddleware(f *testing.F) {
-	f.Add("GET", "safe", "")
-	f.Add("GET", "attack", "")
-	f.Add("POST", "safe", "id=attack")
+	f.Add("GET", "safe", "", false, "X-Real-IP", "203.0.113.10")
+	f.Add("GET", "attack", "", false, "", "")
+	f.Add("POST", "safe", "id=attack", true, "X-Forwarded-By", "198.51.100.5")
 
-	f.Fuzz(func(t *testing.T, method, id, body string) {
-		if len(method) > 16 || len(id) > 256 || len(body) > 1024 {
+	f.Fuzz(func(t *testing.T, method, id, body string, clientIpFromHeader bool, clientIpHeader, clientIpValue string) {
+		if len(method) > 16 || len(id) > 256 || len(body) > 1024 || len(clientIpHeader) > 128 || len(clientIpValue) > 128 {
 			t.Skip()
+		}
+		for _, s := range []string{clientIpHeader, clientIpValue} {
+			if strings.ContainsFunc(s, func(r rune) bool { return r < 32 || r == 127 }) {
+				t.Skip()
+			}
 		}
 		switch method {
 		case "GET", "POST", "PUT", "PATCH", "DELETE":
@@ -340,12 +425,24 @@ func FuzzMiddleware(f *testing.F) {
 			method = "GET"
 		}
 
-		app := testApp(t, Config{
+		cfg := Config{
 			Directives:  strings.NewReader(`SecRule ARGS:id "@streq attack" "id:1,phase:1,deny,status:403"`),
 			Block:       true,
 			InspectBody: true,
-		})
-		status := doReq(t, app, method, "/?id="+url.QueryEscape(id), strings.NewReader(body))
+		}
+		if clientIpFromHeader {
+			cfg.ClientIpFromHeader = true
+			if clientIpHeader != "" {
+				cfg.ClientIpHeader = clientIpHeader
+			}
+		}
+
+		app := testApp(t, cfg)
+		headers := map[string]string{}
+		if clientIpFromHeader && clientIpHeader != "" && clientIpValue != "" {
+			headers[clientIpHeader] = clientIpValue
+		}
+		status := doReqWithHeaders(t, app, method, "/?id="+url.QueryEscape(id), strings.NewReader(body), headers)
 		if status < 100 || status > 599 {
 			t.Fatalf("invalid HTTP status: %d", status)
 		}
