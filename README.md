@@ -100,6 +100,53 @@ func main() {
 }
 ```
 
+## Security upgrade: Coraza 3.8.1
+
+Both adapters require Coraza `v3.8.1` or newer. This upgrades the engine fixes
+for JSON recursion/resource exhaustion, multipart file-handle accumulation,
+JavaScript escape normalization, argument-limit evasion, URI parsing and native
+audit-log formatting. A consuming application's older Coraza dependency must
+also be updated and its binaries rebuilt; updating this source alone does not
+change deployed applications.
+
+**Custom configurations need request-rejection rules as well as the engine
+upgrade.** Coraza flags truncated arguments and malformed bodies; applications
+must reject them so uninspected input cannot reach their handlers. Load upstream
+`coraza.conf-recommended`, or copy/embed this repository's
+[`request-security.conf`](request-security.conf) before your application/CRS
+rules. This baseline enables JSON request inspection and rejects URI parse
+errors, argument overflow and request-body errors. It is a request-processing
+baseline, not a complete attack-detection rule set.
+
+For example, for either versioned adapter:
+
+```go
+//go:embed request-security.conf
+var requestSecurity string
+
+// applicationRules contains your existing CRS/application directives.
+app.Use(coraza.NewCoraza(coraza.Config{
+    Directives: strings.NewReader("SecRuleEngine On\n" + requestSecurity + "\n" + applicationRules),
+    Block: true,
+    InspectBody: true,
+    FailClosed: true,
+}))
+```
+
+Copy `request-security.conf` into your application before embedding it, and
+import `embed` (with a blank import) and `strings`. Do not load both this baseline
+and upstream `coraza.conf-recommended`: they share rule IDs `200001`, `200002`,
+`200004`, `200005`, `200006` and `200009`. If your custom configuration already
+uses these IDs, merge the rules rather than duplicating them. Raise
+`SecArgumentsLimit` or `SecRequestBodyJsonDepthLimit` for legitimate traffic
+instead of removing the rejection rules. Keep Fiber's body-size limit aligned
+with the intended upload size.
+
+Existing custom `WAF` instances remain caller-owned: configure their engine and
+rules equivalently before passing `Config.WAF`. Middleware does not inject or
+replace user rules. Response-body inspection is still not performed by these
+adapters.
+
 ## Design Philosophy
 
 ### 1\. The `io.Reader` Advantage (Embedding Rules)
